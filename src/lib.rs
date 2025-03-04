@@ -328,6 +328,11 @@ fn read_attributes(rdr: &mut impl Read, constant_pool: &[Constant]) -> io::Resul
                         let signature_index = rdr.read_u16::<BigEndian>()?;
                         Ok(Attribute::Signature(signature_index))
                     }
+                    "ConstantValue" => {
+                        let constant_index = rdr.read_u16::<BigEndian>()?;
+
+                        Ok(Attribute::ConstantValue(constant_index))
+                    }
                     _ => {
                         /*
                         Unsupported attribute: LineNumberTable
@@ -368,10 +373,14 @@ pub struct ClassFile {
 
 impl ClassFile {
     pub fn get_constant_utf8(&self, i: u16) -> io::Result<&str> {
-        match &self.constant_pool[i as usize - 1] {
+        match self.get_constant(i) {
             Constant::Utf8(str) => Ok(str),
             _ => Err(io::Error::new(ErrorKind::InvalidData, "not utf8")),
         }
+    }
+
+    pub fn get_constant(&self, i: u16) -> &Constant {
+        &self.constant_pool[i as usize - 1]
     }
 }
 
@@ -448,6 +457,7 @@ pub struct MethodInfo {
 pub enum Attribute {
     /// Method parameters (name_index, access_flags)
     MethodParameters(Vec<(u16, u16)>),
+    ConstantValue(u16),
     Code {
         max_stack: u16,
         max_locals: u16,
